@@ -6,6 +6,7 @@ from timecode import Timecode, TimecodeError
 
 @pytest.mark.parametrize(
     "args,kwargs", [
+        [["12", "00:00:00:00"], {}],
         [["23.976", "00:00:00:00"], {}],
         [["23.98", "00:00:00:00"], {}],
         [["24", "00:00:00:00"], {}],
@@ -49,6 +50,7 @@ from timecode import Timecode, TimecodeError
         [[(30000, 1001), "00:00:00;00"], {}],
         [[(60000, 1000), "00:00:00:00"], {}],
         [[(60000, 1001), "00:00:00;00"], {}],
+        [[12], {"frames": 12000}],
         [[24], {"frames": 12000}],
         [[23.976, "00:00:00:00"], {}],
         [[23.98, "00:00:00:00"], {}],
@@ -416,7 +418,9 @@ def test_add_with_non_suitable_class_instance(args, kwargs, func, tc2):
     with pytest.raises(TimecodeError) as cm:
         _ = func(tc1, tc2)
 
-    assert "Type {} not supported for arithmetic.".format(tc2.__class__.__name__) == str(cm.value)
+    assert str(cm.value) == "Type {} not supported for arithmetic.".format(
+        tc2.__class__.__name__
+    )
 
 
 def test_div_method_working_properly_1():
