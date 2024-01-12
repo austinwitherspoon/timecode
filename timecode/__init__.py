@@ -153,9 +153,9 @@ class Timecode(object):
                 Fraction: If the current version of Python supports (which it should)
                     then Fraction is also accepted.
         """
-        # Convert rational frame rate to float
-        numerator = None
-        denominator = None
+        # Convert rational frame rate to float, defaults to None if not Fraction-like
+        numerator = getattr(framerate, 'numerator', None)
+        denominator = getattr(framerate, 'denominator', None)
 
         try:
             if "/" in framerate:
@@ -167,15 +167,6 @@ class Timecode(object):
         if isinstance(framerate, tuple):
             numerator, denominator = framerate
 
-        try:
-            from fractions import Fraction
-
-            if isinstance(framerate, Fraction):
-                numerator = framerate.numerator
-                denominator = framerate.denominator
-        except ImportError:
-            pass
-
         if numerator and denominator:
             framerate = round(float(numerator) / float(denominator), 2)
             if framerate.is_integer():
@@ -185,15 +176,20 @@ class Timecode(object):
         if isinstance(framerate, (int, float)):
             framerate = str(framerate)
 
+        self._ntsc_framerate = False
+
         # set the int_frame_rate
         if framerate == "29.97":
             self._int_framerate = 30
             self.drop_frame = not self.force_non_drop_frame
+            self._ntsc_framerate = True
         elif framerate == "59.94":
             self._int_framerate = 60
             self.drop_frame = not self.force_non_drop_frame
+            self._ntsc_framerate = True
         elif any(map(lambda x: framerate.startswith(x), ["23.976", "23.98"])):
             self._int_framerate = 24
+            self._ntsc_framerate = True
         elif framerate in ["ms", "1000"]:
             self._int_framerate = 1000
             self.ms_frame = True
@@ -378,6 +374,50 @@ class Timecode(object):
         return ("{:02d}:{:02d}:{:02d}{}" + ff).format(
             hrs, mins, secs, self.frame_delimiter, frs
         )
+
+    def to_systemtime(self, as_float=False):
+        """Convert a Timecode to the video system timestamp.
+        For NTSC rates, the video system time is not the wall-clock one.
+
+        Args:
+            as_float (bool): Return the time as a float number of seconds. 
+
+        Returns:
+            str: The "system time" timestamp of the Timecode.
+        """
+        hh, mm, ss, ff = self.frames_to_tc(self.frames + 1)
+        framerate = float(self.framerate) if self._ntsc_framerate else self._int_framerate
+        ms = ff/framerate
+        if as_float:
+            return (hh*3600 + mm*60 + ss + ms)
+        return "{:02d}:{:02d}:{:02d}.{:03d}".format(hh, mm, ss, round(ms*1000))
+
+    def to_realtime(self, as_float=False):
+        """Convert a Timecode to a "real time" timestamp.
+        Reference: SMPTE 12-1 §5.1.2
+
+        Args:
+            as_float (bool): Return the time as a float number of seconds.
+
+        Returns:
+            str: The "real time" timestamp of the Timecode.
+        """
+        #float property is in the video system time grid
+        ts_float = self.float
+
+        # "int_framerate" frames is one second in NTSC time 
+        if self._ntsc_framerate:
+            ts_float *= 1.001
+        if as_float:
+            return ts_float
+
+        f_fmtdivmod = lambda x: (int(x[0]), x[1])
+        hh, ts_float = f_fmtdivmod(divmod(ts_float, 3600))
+        mm, ts_float = f_fmtdivmod(divmod(ts_float, 60))
+        ss, ts_float = f_fmtdivmod(divmod(ts_float, 1))
+        ms = round(ts_float*1000)
+
+        return "{:02d}:{:02d}:{:02d}.{:03d}".format(hh, mm, ss, ms)
 
     @classmethod
     def parse_timecode(cls, timecode):
