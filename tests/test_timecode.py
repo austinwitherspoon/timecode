@@ -646,6 +646,81 @@ def test_toggle_fractional_frame_3():
     assert tc.__repr__() == "19:23:14:23"
 
 
+def test_timestamp_realtime_1():
+    frames = 12345
+    ts = frames*1/24
+    assert Timecode(24, frames=frames).to_realtime(True) == ts
+
+
+def test_timestamp_realtime_2():
+    tc = Timecode(50, start_seconds=1/50)
+    assert tc.to_realtime() == '00:00:00.020'
+
+
+def test_timestamp_realtime_3():
+    #SMPTE 12-1 §5.2.2:
+    #- "When DF compensation is applied to NTSC TC, the deviation after one hour is approximately –3.6 ms"
+    tc = Timecode(29.97, '00:59:59;29')
+    assert tc.to_realtime() == str(Timecode(1000, '01:00:00.000') - int(round(3.6)))
+
+    #- "[...] The deviation accumulated over a 24-hour period is approximately –2.6 frames (–86 ms)"
+    tc = Timecode(59.94, '23:59:59;59')
+    assert tc.to_realtime() == str(Timecode(1000, '24:00:00.000') - 86)
+
+
+def test_timestamp_realtime_4():
+    #SMPTE 12-1 §5.2.2
+    #- "Monotonically counting at int_framerate will yield a deviation of approx. +3.6 s in one hour of elapsed time."
+    tc = Timecode(59.94, '00:59:59:59', force_non_drop_frame=True)
+    assert tc.to_realtime() == str(Timecode(1000, '01:00:00.000') + 3600)
+
+
+def test_timestamp_systemtime_1():
+    """
+    TC with integer framerate always have system time equal to elapsed time.
+    """
+    tc50 = Timecode(50, '00:59:59:49')
+    tc24 = Timecode(24, '00:59:59:23')
+    tcms = Timecode(1000, '01:00:00.000')
+    assert tc50.to_systemtime() == '01:00:00.000'
+    assert tc24.to_systemtime() == '01:00:00.000'
+    assert tcms.to_systemtime() == '01:00:00.000'
+
+
+def test_timestamp_systemtime_2():
+    """
+    TC with NTSC framerate always have system time different to realtime.
+    """
+    tc = Timecode(23.98, '00:59:59:23')
+    assert tc.to_systemtime() == '01:00:00.000'
+    assert tc.to_systemtime() != tc.to_realtime()
+
+
+def test_timestamp_systemtime_3():
+    """
+    TC with DF NTSC framerate have system time roughly equal to real time.
+    with a -3.6 ms drift per hour (SMPTE 12-1 §5.2.2).
+    """
+    tc = Timecode(29.97, '23:59:59;29')
+    assert tc.to_systemtime() == '24:00:00.000'
+    #Check if we have the expected drift at 24h
+    assert abs(tc.to_systemtime(True) - tc.to_realtime(True) - 24*3600e-6) < 1e-6
+
+
+def test_add_const_dropframe_flag():
+    tc1 = Timecode(29.97, "00:00:00:00", force_non_drop_frame=True)
+    assert (tc1 + 1).drop_frame is False
+
+
+def test_add_tc_dropframe_flag():
+    tc1 = Timecode(29.97, "00:00:00:00", force_non_drop_frame=True)
+    tc2 = Timecode(29.97, "00:00:00;00")
+
+    # Left operand drop_frame flag is preserved
+    assert (tc1 + tc2).drop_frame is False
+    assert (tc2 + tc1).drop_frame is True
+
+
 def test_ge_overload():
     tc1 = Timecode(24, "00:00:00:00")
     tc2 = Timecode(24, "00:00:00:00")
