@@ -652,6 +652,7 @@ class Timecode(object):
         """
         # duplicate current one
         tc = Timecode(self.framerate, frames=self.frames)
+        tc.drop_frame = self.drop_frame
 
         if isinstance(other, Timecode):
             tc.add_frames(other.frames)
@@ -685,8 +686,9 @@ class Timecode(object):
             raise TimecodeError(
                 "Type {} not supported for arithmetic.".format(other.__class__.__name__)
             )
-
-        return Timecode(self.framerate, frames=abs(subtracted_frames))
+        tc = Timecode(self.framerate, frames=abs(subtracted_frames))
+        tc.drop_frame = self.drop_frame
+        return tc
 
     def __mul__(self, other):
         """Return a new Timecode instance with multiplied value.
@@ -709,8 +711,9 @@ class Timecode(object):
             raise TimecodeError(
                 "Type {} not supported for arithmetic.".format(other.__class__.__name__)
             )
-
-        return Timecode(self.framerate, frames=multiplied_frames)
+        tc = Timecode(self.framerate, frames=multiplied_frames)
+        tc.drop_frame = self.drop_frame
+        return tc
 
     def __div__(self, other):
         """Return a new Timecode instance with divided value.
