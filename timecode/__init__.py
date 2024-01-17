@@ -296,7 +296,7 @@ class Timecode(object):
 
         return frame_number + 1  # frames
 
-    def frames_to_tc(self, frames):
+    def frames_to_tc(self, frames, skip_rollover = False):
         """Convert frames back to timecode.
 
         Args:
@@ -328,7 +328,8 @@ class Timecode(object):
 
         # If frame_number is greater than 24 hrs, next operation will rollover
         # clock
-        frame_number %= frames_per_24_hours
+        if not skip_rollover:
+            frame_number %= frames_per_24_hours
 
         if self.drop_frame:
             d = frame_number // frames_per_10_minutes
@@ -385,7 +386,10 @@ class Timecode(object):
         Returns:
             str: The "system time" timestamp of the Timecode.
         """
-        hh, mm, ss, ff = self.frames_to_tc(self.frames + 1)
+        if self.ms_frame:
+            return self.float-(1e-3) if as_float else str(self)
+
+        hh, mm, ss, ff = self.frames_to_tc(self.frames + 1, skip_rollover=True)
         framerate = float(self.framerate) if self._ntsc_framerate else self._int_framerate
         ms = ff/framerate
         if as_float:
@@ -404,6 +408,9 @@ class Timecode(object):
         """
         #float property is in the video system time grid
         ts_float = self.float
+
+        if self.ms_frame:
+            return ts_float-(1e-3) if as_float else str(self)
 
         # "int_framerate" frames is one second in NTSC time 
         if self._ntsc_framerate:
