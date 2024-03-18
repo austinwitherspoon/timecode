@@ -62,5 +62,6 @@ setup(
     package_data={
         "timecode": ["py.typed"],
     },
+    python_requires=">=3.7",
     zip_safe=True,
 )
