@@ -66,10 +66,7 @@ class Timecode(object):
         force_non_drop_frame (bool): If True, uses Non-Dropframe calculation for 29.97
             or 59.94 only. Has no meaning for any other framerate. It is False by
             default.
-    """        
-    _framerate: Union[str, int, float, Fraction]
-    _int_framerate: int
-    _frames: int
+    """
 
     def __init__(
         self,
@@ -86,11 +83,10 @@ class Timecode(object):
 
         self.ms_frame = False
         self.fraction_frame = False
-        self._int_framerate = None  # type: ignore
-        self._framerate = None  # type: ignore
+        self._int_framerate : Union[None, int] = None
+        self._framerate : Union[None, str, int, float, Fraction] = None
         self.framerate = framerate  # type: ignore
-
-        self._frames = None  # type: ignore
+        self._frames : Union[None, int] = None
 
         # attribute override order
         # start_timecode > frames > start_seconds
