@@ -4,6 +4,7 @@
 .coverage
 *.egg-info/*
 *.swp
+.venv/*
 docs/html/*
 docs/latex/*
 docs/doctrees/*
